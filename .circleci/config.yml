@@ -26,7 +26,6 @@ jobs:
       - run:  |
           echo "Installing dependencies..."
           npm install
-
   # Job to run tests
   test:
     docker:
