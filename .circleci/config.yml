@@ -2,8 +2,8 @@ version: 2.1
 
 # Declare and configure orbs (reusable components)
 orbs:
-  node: circleci/node@5.0.1
-  docker: circleci/docker@2.1.4
+  node: circleci/node@5.1.1
+  docker: circleci/docker@2.4.0
   snyk: snyk/snyk@2.0.2 # 3rd party orb of snyk
 
 jobs:
@@ -77,7 +77,7 @@ jobs:
           tag: <<pipeline.git.tag>>
 
 workflows:
-  version: 2
+  # Workflow to build, test, scan, and push Docker image
   simple_workflow:
     jobs:
       # Build job triggered on changes to the main branch
