@@ -1,0 +1,108 @@
+version: 2.1
+
+# Declare and configure orbs (reusable components)
+orbs:
+  node: circleci/node@5.0.1
+  docker: circleci/docker@2.1.4
+  snyk: snyk/snyk@2.0.2 # 3rd party orb of snyk
+
+jobs:
+  # name of the job to build the Node.js application
+  build:
+    docker:
+      - image: cimg/node:21.4.0
+    parameters:
+      dockerhub-username:
+        type: string
+      dockerhub-password:
+        type: string
+    steps:
+      # checkout source code from GitHub
+      - checkout
+      # Install Node.js dependencies
+      - node/install-packages:
+          pkg-manager: npm
+      # Install application dependencies
+      - run:  |
+          echo "Installing dependencies..."
+          npm install
+
+  # Job to run tests
+  test:
+    docker:
+      - image: cimg/node:21.4.0
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run: |
+          echo "Running tests..."
+          npm test
+
+  # Job to scan for vulnerabilities and push Docker image to Docker Hub
+  scan:
+    docker:
+      - image: cimg/node:21.4.0
+    steps:
+      # Set up access to the Docker daemon
+      - setup_remote_docker
+      - checkout
+      # Build the Docker image
+      - run: docker build -t $DOCKER_LOGIN/$IMAGE_NAME:latest .
+      # Login to Docker Hub using environment variables
+      - run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_LOGIN}" --password-stdin
+      # Push the image to Docker Hub
+      - run: docker push $DOCKER_LOGIN/$IMAGE_NAME:latest
+      # Run Snyk scan on the Docker image
+      - snyk/scan:
+          docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
+          severity-threshold: high
+
+  # Job to build and push Docker image after successful test and scan
+  build-and-push:
+    docker:
+      - image: cimg/node:21.4.0
+    steps:
+      # Set up access to the Docker daemon
+      - setup_remote_docker
+      - checkout
+      # Check Docker configuration
+      - docker/check
+      # Build the Docker image
+      - docker/build:
+          image: $DOCKER_LOGIN/$IMAGE_NAME
+          tag: <<pipeline.git.tag>>
+      # Push the Docker image to Docker Hub
+      - docker/push:
+          image: $DOCKER_LOGIN/$IMAGE_NAME
+          tag: <<pipeline.git.tag>>
+
+workflows:
+  version: 2
+  simple_workflow:
+    jobs:
+      # Build job triggered on changes to the main branch
+      - build:
+          dockerhub-username: $DOCKER_LOGIN
+          dockerhub-password: $DOCKER_PASSWORD
+          filters:
+            branches:
+              only: main
+
+      # Test job runs after the build job and only on the main branch
+      - test:
+          # to let `test` job run after the `build` job
+          requires:
+            - build
+          filters:
+            branches:
+              only: main
+
+      - scan:
+          requires:
+            - test
+
+      # Build-and-push job runs after the test job
+      - build-and-push:
+          requires:
+            - scan
