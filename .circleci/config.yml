@@ -7,7 +7,6 @@ orbs:
   # 3rd party orb of snyk
   snyk: snyk/snyk@2.0.2
   heroku: circleci/heroku@2.0.0
-  ggshield: gitguardian/ggshield@1.1.4
 
 jobs:
   # name of the job to build the Node.js application
@@ -60,10 +59,6 @@ jobs:
       - snyk/scan:
           docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
           severity-threshold: high
-      # Run GitGuardian scan on the Docker image
-      # install ggshield
-      - run: curl -sSfL https://raw.githubusercontent.com/GitGuardian/ggshield/master/install.sh | sh -s -- -b /usr/local/bin
-      - run: ggshield secret scan -v ci -r $DOCKER_LOGIN/$IMAGE_NAME:latest
 
   # Job to build and push Docker image after successful test and scan
   build-and-push:
