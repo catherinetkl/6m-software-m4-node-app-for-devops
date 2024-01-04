@@ -79,22 +79,39 @@ jobs:
           tag: <<pipeline.git.tag>>
 
   # Job to deploy the application to Heroku
-  deploy:
+  # deploy:
+  #   docker:
+  #     - image: cimg/node:21.4.0
+  #   steps:
+  #     - setup_remote_docker
+  #     - heroku/install
+  #     - run:
+  #         name: Install Heroku Container Registry plugin
+  #         command: |
+  #           heroku plugins:install @heroku-cli/plugin-container-registry
+  #     - run:
+  #         name: Heroku Container Push
+  #         command: |
+  #           heroku container:login
+  #           heroku container:push web -a $HEROKU_APP_NAME
+  #           heroku container:release web -a $HEROKU_APP_NAME
+  pull-and-deploy:
     docker:
       - image: cimg/node:21.4.0
     steps:
       - setup_remote_docker
       - heroku/install
+      - docker/pull:
+          images: $DOCKER_LOGIN/$IMAGE_NAME:<<pipeline.git.tag>>
       - run:
-          name: Install Heroku Container Registry plugin
+          name: Heroku Container Push With Image From Docker Hub
           command: |
-            heroku plugins:install @heroku-cli/plugin-container-registry
-      - run:
-          name: Heroku Container Push
-          command: |
-            heroku container:login
-            heroku container:push web -a $HEROKU_APP_NAME
-            heroku container:release web -a $HEROKU_APP_NAME
+              heroku container:login
+              docker tag $DOCKER_LOGIN/$IMAGE_NAME:<<pipeline.git.tag>> registry.heroku.com/$HEROKU_APP_NAME/web
+              # format --- docker tag <image name from docker hub> registry.heroku.com/<app-name>/web
+              docker push registry.heroku.com/$HEROKU_APP_NAME/web
+              # format --- docker push registry.heroku.com/<app-name>/web
+              heroku container:release web -a $HEROKU_APP_NAME
 
 workflows:
   # Declare a workflow that runs on every push to the main branch
@@ -127,7 +144,10 @@ workflows:
             - scan
 
       # Deploy job runs after the build-and-push job
-      - deploy:
+      # - deploy:
+      #     requires:
+      #       - build-and-push
+      - pull-and-deploy:
           requires:
             - build-and-push
 
@@ -159,10 +179,15 @@ workflows:
           filters:
             branches:
               only: release
-
-      - deploy:
+      - pull-and-deploy:
           requires:
             - build-and-push
           filters:
             branches:
               only: release
+      # - deploy:
+      #     requires:
+      #       - build-and-push
+      #     filters:
+      #       branches:
+      #         only: release
