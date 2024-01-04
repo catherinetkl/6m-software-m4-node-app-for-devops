@@ -5,6 +5,7 @@ orbs:
   node: circleci/node@5.1.1
   docker: circleci/docker@2.4.0
   snyk: snyk/snyk@2.0.2 # 3rd party orb of snyk
+  heroku: circleci/heroku@2.0.0
 
 jobs:
   # name of the job to build the Node.js application
@@ -26,6 +27,7 @@ jobs:
       - run:  |
           echo "Installing dependencies..."
           npm install
+
   # Job to run tests
   test:
     docker:
@@ -76,8 +78,26 @@ jobs:
           image: $DOCKER_LOGIN/$IMAGE_NAME
           tag: <<pipeline.git.tag>>
 
+  # Job to deploy the application to Heroku
+  deploy:
+    docker:
+      - image: cimg/node:21.4.0
+    environment:
+      HEROKU_APP_NAME: $HEROKU_APP_NAME
+      HEROKU_API_KEY: $HEROKU_API_KEY
+    steps:
+      - setup_remote_docker
+      - heroku/install
+      - checkout
+      - run:
+          name: Heroku Container Push
+          command: |
+            heroku container:login
+            heroku container:push web -a $HEROKU_APP_NAME
+            heroku container:release web -a $HEROKU_APP_NAME
+
 workflows:
-  # Workflow to build, test, scan, and push Docker image
+  # Declare a workflow that runs on every push to the main branch
   simple_workflow:
     jobs:
       # Build job triggered on changes to the main branch
@@ -105,3 +125,44 @@ workflows:
       - build-and-push:
           requires:
             - scan
+
+      # Deploy job runs after the build-and-push job
+      - deploy:
+          requires:
+            - build-and-push
+
+  release_workflow:
+    jobs:
+      # All jobs (including publish and deploy) triggered on changes to the release branch
+      - build:
+          dockerhub-username: $DOCKER_LOGIN
+          dockerhub-password: $DOCKER_PASSWORD
+          filters:
+            branches:
+              only: release
+
+      - test:
+          # to let `test` job run after the `build` job
+          requires:
+            - build
+          filters:
+            branches:
+              only: release
+
+      - scan:
+          requires:
+            - test
+
+      - build-and-push:
+          requires:
+            - scan
+          filters:
+            branches:
+              only: release
+
+      - deploy:
+          requires:
+            - build-and-push
+          filters:
+            branches:
+              only: release
