@@ -6,6 +6,7 @@ orbs:
   docker: circleci/docker@2.4.0
   snyk: snyk/snyk@2.0.2 # 3rd party orb of snyk
   heroku: circleci/heroku@2.0.0
+  ggshield: gitguardian/ggshield@1.1.4
 
 jobs:
   # name of the job to build the Node.js application
@@ -58,6 +59,11 @@ jobs:
       - snyk/scan:
           docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
           severity-threshold: high
+      # Run GitGuardian scan on the Docker image
+      - ggshield/scan:
+          revision: <<pipeline.git.revision>>
+          docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
+          severity-threshold: high
 
   # Job to build and push Docker image after successful test and scan
   build-and-push:
@@ -101,8 +107,9 @@ jobs:
     steps:
       - setup_remote_docker
       - heroku/install
-      - docker/pull:
-          images: $DOCKER_LOGIN/$IMAGE_NAME:latest
+      - run:
+          name: Pull Docker Image From Docker Hub
+          command: docker pull $DOCKER_LOGIN/$IMAGE_NAME:latest
       - run:
           name: Heroku Container Push With Image From Docker Hub
           command: |
