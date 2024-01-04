@@ -88,7 +88,10 @@ jobs:
     steps:
       - setup_remote_docker
       - heroku/install
-      - checkout
+      - run:
+          name: Install Heroku Container Registry plugin
+          command: |
+            heroku plugins:install @heroku-cli/plugin-container-registry
       - run:
           name: Heroku Container Push
           command: |
