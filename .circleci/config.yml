@@ -57,14 +57,11 @@ jobs:
       # Push the image to Docker Hub
       - run: docker push $DOCKER_LOGIN/$IMAGE_NAME:latest
       # Run Snyk scan on the Docker image
-      # - snyk/scan:
-      #     docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
-      #     severity-threshold: high
+      - snyk/scan:
+          docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
+          severity-threshold: high
       # Run GitGuardian scan on the Docker image
-      - ggshield/scan:
-          name: GitGuardianShield Scan
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
+      - run: ggshield secret scan -v ci -r $DOCKER_LOGIN/$IMAGE_NAME:latest
 
   # Job to build and push Docker image after successful test and scan
   build-and-push:
