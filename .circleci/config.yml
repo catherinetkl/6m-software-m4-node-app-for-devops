@@ -82,9 +82,6 @@ jobs:
   deploy:
     docker:
       - image: cimg/node:21.4.0
-    environment:
-      HEROKU_APP_NAME: $HEROKU_APP_NAME
-      HEROKU_API_KEY: $HEROKU_API_KEY
     steps:
       - setup_remote_docker
       - heroku/install
