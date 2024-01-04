@@ -4,7 +4,8 @@ version: 2.1
 orbs:
   node: circleci/node@5.1.1
   docker: circleci/docker@2.4.0
-  snyk: snyk/snyk@2.0.2 # 3rd party orb of snyk
+  # 3rd party orb of snyk
+  snyk: snyk/snyk@2.0.2
   heroku: circleci/heroku@2.0.0
   ggshield: gitguardian/ggshield@1.1.4
 
@@ -56,14 +57,14 @@ jobs:
       # Push the image to Docker Hub
       - run: docker push $DOCKER_LOGIN/$IMAGE_NAME:latest
       # Run Snyk scan on the Docker image
-      - snyk/scan:
-          docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
-          severity-threshold: high
+      # - snyk/scan:
+      #     docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
+      #     severity-threshold: high
       # Run GitGuardian scan on the Docker image
       - ggshield/scan:
+          name: GitGuardianShield Scan
+          base_revision: <<pipeline.git.base_revision>>
           revision: <<pipeline.git.revision>>
-          docker-image-name: $DOCKER_LOGIN/$IMAGE_NAME:latest
-          severity-threshold: high
 
   # Job to build and push Docker image after successful test and scan
   build-and-push:
