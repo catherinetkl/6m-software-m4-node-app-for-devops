@@ -2,7 +2,7 @@ version: 2.1
 
 # Declare and configure orbs (reusable components)
 orbs:
-  node: circleci/node@5.1.1
+  node: circleci/node@5.2.0
   docker: circleci/docker@2.4.0
   # 3rd party orb of snyk
   snyk: snyk/snyk@2.0.2
